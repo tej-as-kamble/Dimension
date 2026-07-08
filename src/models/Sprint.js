@@ -1,11 +1,5 @@
 import mongoose from 'mongoose';
 
-/**
- * Flexible status enum for Sprints.
- * Adding new statuses only requires adding a string to this array.
- */
-const SPRINT_STATUSES = ['Planning', 'Active', 'Closed'];
-
 const SprintSchema = new mongoose.Schema(
   {
     userId: {
@@ -22,11 +16,9 @@ const SprintSchema = new mongoose.Schema(
     },
     startDate: {
       type: Date,
-      required: [true, 'Please provide a start date'],
     },
     endDate: {
       type: Date,
-      required: [true, 'Please provide an end date'],
     },
     sprintGoal: {
       type: String,
@@ -34,22 +26,12 @@ const SprintSchema = new mongoose.Schema(
       maxlength: [500, 'Sprint goal cannot exceed 500 characters'],
       default: '',
     },
-    status: {
-      type: String,
-      enum: {
-        values: SPRINT_STATUSES,
-        message: '{VALUE} is not a valid sprint status',
-      },
-      default: 'Planning',
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Compound index for efficient dashboard queries
-SprintSchema.index({ userId: 1, status: 1 });
 SprintSchema.index({ userId: 1, createdAt: -1 });
 
 /**
@@ -61,5 +43,4 @@ SprintSchema.pre('validate', function () {
   }
 });
 
-export { SPRINT_STATUSES };
 export default mongoose.models.Sprint || mongoose.model('Sprint', SprintSchema);

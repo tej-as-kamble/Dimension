@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
  * Flexible enums — adding new values only requires appending to these arrays.
  */
 const TASK_PRIORITIES = ['Low', 'Medium', 'High'];
-const TASK_STAGES = ['To Do', 'In Progress', 'Done'];
 
 /**
  * Activity Log sub-document schema.
@@ -61,10 +60,6 @@ const TaskSchema = new mongoose.Schema(
     },
     stage: {
       type: String,
-      enum: {
-        values: TASK_STAGES,
-        message: '{VALUE} is not a valid stage',
-      },
       default: 'To Do',
     },
     activityLog: [ActivityLogSchema],
@@ -77,5 +72,5 @@ const TaskSchema = new mongoose.Schema(
 // Compound index for efficient sprint view queries
 TaskSchema.index({ userId: 1, sprintId: 1, stage: 1 });
 
-export { TASK_PRIORITIES, TASK_STAGES };
+export { TASK_PRIORITIES };
 export default mongoose.models.Task || mongoose.model('Task', TaskSchema);

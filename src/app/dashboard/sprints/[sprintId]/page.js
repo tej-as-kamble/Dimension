@@ -11,7 +11,6 @@ import {
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import SprintForm from '@/components/SprintForm';
-import StatusBadge from '@/components/StatusBadge';
 import Modal from '@/components/Modal';
 import styles from '../../dashboard.module.css';
 
@@ -19,11 +18,13 @@ export default function SprintDetailPage({ params }) {
   const { sprintId } = use(params);
   const router = useRouter();
   const [sprint, setSprint] = useState(null);
-  const [grouped, setGrouped] = useState({ 'To Do': [], 'In Progress': [], Done: [] });
+  const [grouped, setGrouped] = useState({});
+  const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -41,6 +42,7 @@ export default function SprintDetailPage({ params }) {
     }
     if (tasksResult.success) {
       setGrouped(tasksResult.grouped);
+      setStages(tasksResult.stages || []);
     }
     setLoading(false);
   }
@@ -102,11 +104,21 @@ export default function SprintDetailPage({ params }) {
     );
   }
 
-  const columns = [
-    { key: 'To Do', label: 'To Do', className: styles.columnTodo, icon: '📋' },
-    { key: 'In Progress', label: 'In Progress', className: styles.columnInProgress, icon: '⚡' },
-    { key: 'Done', label: 'Done', className: styles.columnDone, icon: '✅' },
-  ];
+  async function handleAddStage() {
+    const name = prompt('Enter new stage name:');
+    if (!name || !name.trim()) return;
+    const { createStage } = await import('@/actions/stage.actions');
+    const result = await createStage(name.trim());
+    if (result.success) loadData();
+  }
+
+  async function handleEditStage(stage) {
+    const newName = prompt('Enter new name for stage:', stage.name);
+    if (!newName || !newName.trim() || newName === stage.name) return;
+    const { updateStage } = await import('@/actions/stage.actions');
+    const result = await updateStage(stage._id, newName.trim());
+    if (result.success) loadData();
+  }
 
   return (
     <>
@@ -117,8 +129,13 @@ export default function SprintDetailPage({ params }) {
         </Link>
         <div className={styles.sprintTitleRow}>
           <h1 className={styles.sprintTitle}>{sprint.name}</h1>
-          <StatusBadge value={sprint.status} />
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowDetails(!showDetails)}
+            >
+              {showDetails ? 'Hide Details' : 'Show Details'}
+            </button>
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => setShowEditModal(true)}
@@ -133,13 +150,17 @@ export default function SprintDetailPage({ params }) {
             </button>
           </div>
         </div>
-        <div className={styles.sprintMeta}>
-          <span>📅 {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}</span>
-        </div>
-        {sprint.sprintGoal && (
-          <div className={styles.sprintGoal}>
-            <strong>Goal:</strong> {sprint.sprintGoal}
-          </div>
+        {showDetails && (
+          <>
+            <div className={styles.sprintMeta}>
+              <span>📅 {sprint.startDate ? formatDate(sprint.startDate) : 'No start date'} — {sprint.endDate ? formatDate(sprint.endDate) : 'No end date'}</span>
+            </div>
+            {sprint.sprintGoal && (
+              <div className={styles.sprintGoal}>
+                <strong>Goal:</strong> {sprint.sprintGoal}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -155,23 +176,30 @@ export default function SprintDetailPage({ params }) {
       </div>
 
       {/* Kanban Board */}
-      <div className={styles.kanban}>
-        {columns.map((col) => (
+      <div className={styles.kanban} style={{ overflowX: 'auto', paddingBottom: '16px' }}>
+        {stages.map((stage) => (
           <div
-            key={col.key}
-            className={`${styles.kanbanColumn} ${col.className}`}
+            key={stage._id || stage.name}
+            className={`${styles.kanbanColumn}`}
           >
             <div className={styles.kanbanHeader}>
               <span className={styles.kanbanTitle}>
-                {col.icon} {col.label}
+                {stage.name}
+                <button 
+                  onClick={() => handleEditStage(stage)} 
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '8px', opacity: 0.5 }}
+                  title="Rename Stage"
+                >
+                  ✎
+                </button>
               </span>
               <span className={styles.kanbanCount}>
-                {grouped[col.key]?.length || 0}
+                {grouped[stage.name]?.length || 0}
               </span>
             </div>
             <div className={styles.kanbanBody}>
-              {grouped[col.key]?.length > 0 ? (
-                grouped[col.key].map((task) => (
+              {grouped[stage.name]?.length > 0 ? (
+                grouped[stage.name].map((task) => (
                   <TaskCard
                     key={task._id}
                     task={task}
@@ -184,6 +212,11 @@ export default function SprintDetailPage({ params }) {
             </div>
           </div>
         ))}
+        <div className={styles.kanbanColumn} style={{ minWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button className="btn btn-secondary" onClick={handleAddStage}>
+            + Add Column
+          </button>
+        </div>
       </div>
 
       {/* Create Task Modal */}
@@ -194,6 +227,7 @@ export default function SprintDetailPage({ params }) {
       >
         <TaskForm
           sprintId={sprintId}
+          stages={stages}
           onSubmit={handleCreateTask}
           onCancel={() => setShowTaskModal(false)}
           loading={formLoading}

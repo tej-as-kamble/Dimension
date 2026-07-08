@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import StatusBadge from './StatusBadge';
 import styles from './SprintCard.module.css';
 
 export default function SprintCard({ sprint, onEdit, onDelete }) {
@@ -51,7 +50,6 @@ export default function SprintCard({ sprint, onEdit, onDelete }) {
       )}
 
       <div className={styles.cardMeta}>
-        <StatusBadge value={sprint.status} />
         <span className={styles.cardDates}>
           📅 {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
         </span>

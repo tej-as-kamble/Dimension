@@ -28,26 +28,26 @@ export async function createSprint(formData) {
     const startDate = formData.get('startDate');
     const endDate = formData.get('endDate');
     const sprintGoal = formData.get('sprintGoal')?.trim() || '';
-    const status = formData.get('status') || 'Planning';
 
-    if (!name || !startDate || !endDate) {
-      return { error: 'Name, start date, and end date are required' };
+    if (!name) {
+      return { error: 'Name is required' };
     }
 
-    if (new Date(endDate) <= new Date(startDate)) {
+    if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
       return { error: 'End date must be after start date' };
     }
 
     await dbConnect();
 
-    const sprint = await Sprint.create({
+    const sprintData = {
       userId,
       name,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
       sprintGoal,
-      status,
-    });
+    };
+    if (startDate) sprintData.startDate = new Date(startDate);
+    if (endDate) sprintData.endDate = new Date(endDate);
+
+    const sprint = await Sprint.create(sprintData);
 
     revalidatePath('/dashboard');
 
@@ -143,14 +143,12 @@ export async function updateSprint(sprintId, formData) {
     const startDate = formData.get('startDate');
     const endDate = formData.get('endDate');
     const sprintGoal = formData.get('sprintGoal')?.trim();
-    const status = formData.get('status');
 
     if (name) updates.name = name;
     if (startDate) updates.startDate = new Date(startDate);
     if (endDate) updates.endDate = new Date(endDate);
     if (sprintGoal !== null && sprintGoal !== undefined)
       updates.sprintGoal = sprintGoal;
-    if (status) updates.status = status;
 
     // Validate dates if both provided
     const effectiveStart = updates.startDate || null;

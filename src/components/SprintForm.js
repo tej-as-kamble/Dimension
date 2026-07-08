@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import useFormCache from '@/hooks/useFormCache';
 import styles from './SprintForm.module.css';
 
 export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
@@ -13,6 +14,16 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
     return new Date(date).toISOString().split('T')[0];
   }
 
+  const formId = sprint ? `sprint_edit_${sprint._id}` : 'sprint_create';
+  const { cachedData, isLoaded, saveCache, clearCache } = useFormCache(formId);
+
+  const defaultName = cachedData?.name ?? sprint?.name ?? '';
+  const defaultStartDate = cachedData?.startDate ?? formatDate(sprint?.startDate) ?? '';
+  const defaultEndDate = cachedData?.endDate ?? formatDate(sprint?.endDate) ?? '';
+  const defaultSprintGoal = cachedData?.sprintGoal ?? sprint?.sprintGoal ?? '';
+
+  if (!isLoaded) return <div className="spinner" style={{ margin: '20px auto' }}></div>;
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
@@ -20,11 +31,19 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
     const result = await onSubmit(formData);
     if (result?.error) {
       setError(result.error);
+    } else {
+      clearCache();
     }
   }
 
+  function handleChange(e) {
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+    saveCache(data);
+  }
+
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
+    <form onChange={handleChange} onSubmit={handleSubmit} className={styles.form}>
       {error && (
         <div className="alert alert-error">
           <span>⚠</span> {error}
@@ -39,7 +58,7 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
           type="text"
           className="form-input"
           placeholder="e.g. Sprint 1 — Auth Module"
-          defaultValue={sprint?.name || ''}
+          defaultValue={defaultName}
           required
           maxLength={100}
         />
@@ -53,8 +72,7 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
             name="startDate"
             type="date"
             className="form-input"
-            defaultValue={formatDate(sprint?.startDate)}
-            required
+            defaultValue={defaultStartDate}
           />
         </div>
         <div className="form-group">
@@ -64,8 +82,7 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
             name="endDate"
             type="date"
             className="form-input"
-            defaultValue={formatDate(sprint?.endDate)}
-            required
+            defaultValue={defaultEndDate}
           />
         </div>
       </div>
@@ -77,27 +94,13 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
           name="sprintGoal"
           className="form-textarea"
           placeholder="What do you want to accomplish this sprint?"
-          defaultValue={sprint?.sprintGoal || ''}
+          defaultValue={defaultSprintGoal}
           maxLength={500}
           style={{ minHeight: '80px' }}
         />
       </div>
 
-      {isEdit && (
-        <div className="form-group">
-          <label htmlFor="sprint-status" className="form-label">Status</label>
-          <select
-            id="sprint-status"
-            name="status"
-            className="form-select"
-            defaultValue={sprint?.status || 'Planning'}
-          >
-            <option value="Planning">Planning</option>
-            <option value="Active">Active</option>
-            <option value="Closed">Closed</option>
-          </select>
-        </div>
-      )}
+
 
       <div className={styles.actions}>
         {onCancel && (

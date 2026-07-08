@@ -15,6 +15,7 @@ export default function TaskDetailPage({ params }) {
   const { sprintId, taskId } = use(params);
   const router = useRouter();
   const [task, setTask] = useState(null);
+  const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -25,9 +26,16 @@ export default function TaskDetailPage({ params }) {
 
   async function loadTask() {
     setLoading(true);
-    const result = await getTaskById(taskId);
+    const { getStages } = await import('@/actions/stage.actions');
+    const [result, stagesResult] = await Promise.all([
+      getTaskById(taskId),
+      getStages(),
+    ]);
     if (result.success) {
       setTask(result.task);
+    }
+    if (stagesResult?.success) {
+      setStages(stagesResult.stages);
     }
     setLoading(false);
   }
@@ -134,6 +142,7 @@ export default function TaskDetailPage({ params }) {
         <TaskForm
           task={task}
           sprintId={sprintId}
+          stages={stages}
           onSubmit={handleUpdate}
           onCancel={() => setShowEditModal(false)}
           loading={formLoading}

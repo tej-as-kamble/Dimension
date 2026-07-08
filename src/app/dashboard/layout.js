@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import styles from './dashboard.module.css';
 
 export const metadata = {
-  title: 'Dashboard — Dimenssion',
+  title: 'Dashboard — Dimension',
   description: 'Manage your sprints and tasks',
 };
 

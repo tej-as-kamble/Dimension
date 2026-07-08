@@ -1,17 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import useFormCache from '@/hooks/useFormCache';
 import styles from './TaskForm.module.css';
 
 export default function TaskForm({
   task,
   sprintId,
+  stages = [],
   onSubmit,
   onCancel,
   loading,
 }) {
   const [error, setError] = useState('');
   const isEdit = !!task;
+
+  const formId = task ? `task_edit_${task._id}` : (sprintId ? `task_create_${sprintId}` : 'task_create');
+  const { cachedData, isLoaded, saveCache, clearCache } = useFormCache(formId);
+
+  const defaultTitle = cachedData?.title ?? task?.title ?? '';
+  const defaultDescription = cachedData?.description ?? task?.description ?? '';
+  const defaultPriority = cachedData?.priority ?? task?.priority ?? 'Medium';
+  const defaultStage = cachedData?.stage ?? task?.stage ?? (stages[0]?.name || 'To Do');
+
+  if (!isLoaded) return <div className="spinner" style={{ margin: '20px auto' }}></div>;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -23,11 +35,19 @@ export default function TaskForm({
     const result = await onSubmit(formData);
     if (result?.error) {
       setError(result.error);
+    } else {
+      clearCache();
     }
   }
 
+  function handleChange(e) {
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+    saveCache(data);
+  }
+
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
+    <form onChange={handleChange} onSubmit={handleSubmit} className={styles.form}>
       {error && (
         <div className="alert alert-error">
           <span>⚠</span> {error}
@@ -42,7 +62,7 @@ export default function TaskForm({
           type="text"
           className="form-input"
           placeholder="e.g. Implement user authentication"
-          defaultValue={task?.title || ''}
+          defaultValue={defaultTitle}
           required
           maxLength={200}
         />
@@ -57,7 +77,7 @@ export default function TaskForm({
           name="description"
           className="form-textarea"
           placeholder="Write your task description using Markdown..."
-          defaultValue={task?.description || ''}
+          defaultValue={defaultDescription}
           maxLength={10000}
           style={{ minHeight: '140px' }}
         />
@@ -70,7 +90,7 @@ export default function TaskForm({
             id="task-priority"
             name="priority"
             className="form-select"
-            defaultValue={task?.priority || 'Medium'}
+            defaultValue={defaultPriority}
           >
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
@@ -83,11 +103,21 @@ export default function TaskForm({
             id="task-stage"
             name="stage"
             className="form-select"
-            defaultValue={task?.stage || 'To Do'}
+            defaultValue={defaultStage}
           >
-            <option value="To Do">To Do</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Done">Done</option>
+            {stages.length > 0 ? (
+              stages.map((stg) => (
+                <option key={stg._id || stg.name} value={stg.name}>
+                  {stg.name}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Done">Done</option>
+              </>
+            )}
           </select>
         </div>
       </div>

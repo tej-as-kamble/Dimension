@@ -54,7 +54,7 @@ export default function Sidebar({ user }) {
       >
         <Link href="/dashboard" className={styles.logo}>
           <div className={styles.logoIcon}>D</div>
-          <span className={styles.logoText}>Dimenssion</span>
+          <span className={styles.logoText}>Dimension</span>
         </Link>
 
         <nav className={styles.nav}>
@@ -62,9 +62,8 @@ export default function Sidebar({ user }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`${styles.navItem} ${
-                isActive(item.href) ? styles.navItemActive : ''
-              }`}
+              className={`${styles.navItem} ${isActive(item.href) ? styles.navItemActive : ''
+                }`}
               onClick={() => setMobileOpen(false)}
             >
               <span className={styles.navIcon}>{item.icon}</span>

@@ -54,7 +54,7 @@ export default function RegisterPage() {
         <div className={styles.authHeader}>
           <Link href="/" className={styles.authLogo}>
             <div className={styles.authLogoIcon}>D</div>
-            <span className={styles.authLogoText}>Dimenssion</span>
+            <span className={styles.authLogoText}>Dimension</span>
           </Link>
           <h1 className={styles.authTitle}>Create your account</h1>
           <p className={styles.authSubtitle}>

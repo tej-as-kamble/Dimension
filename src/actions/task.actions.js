@@ -3,6 +3,7 @@
 import dbConnect from '@/lib/dbConnect';
 import Task from '@/models/Task';
 import Sprint from '@/models/Sprint';
+import Stage from '@/models/Stage';
 import { auth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
@@ -127,17 +128,36 @@ export async function getTasksBySprintId(sprintId) {
       sprintId: task.sprintId.toString(),
     }));
 
-    // Group by stage
-    const grouped = {
-      'To Do': serialized.filter((t) => t.stage === 'To Do'),
-      'In Progress': serialized.filter((t) => t.stage === 'In Progress'),
-      Done: serialized.filter((t) => t.stage === 'Done'),
-    };
+    // Fetch user stages for dynamic grouping
+    let stages = await Stage.find({ userId }).sort({ order: 1 }).lean();
+    if (!stages || stages.length === 0) {
+      const defaults = [
+        { userId, name: 'To Do', order: 0 },
+        { userId, name: 'In Progress', order: 1 },
+        { userId, name: 'Done', order: 2 },
+      ];
+      await Stage.insertMany(defaults);
+      stages = await Stage.find({ userId }).sort({ order: 1 }).lean();
+    }
+
+    const grouped = {};
+    const validStageNames = new Set();
+    stages.forEach(stage => {
+      grouped[stage.name] = [];
+      validStageNames.add(stage.name);
+    });
+
+    serialized.forEach(t => {
+      const stageName = validStageNames.has(t.stage) ? t.stage : (stages[0]?.name || 'To Do');
+      if (!grouped[stageName]) grouped[stageName] = [];
+      grouped[stageName].push(t);
+    });
 
     return {
       success: true,
       tasks: JSON.parse(JSON.stringify(serialized)),
       grouped: JSON.parse(JSON.stringify(grouped)),
+      stages: JSON.parse(JSON.stringify(stages)),
     };
   } catch (error) {
     console.error('Get tasks error:', error);

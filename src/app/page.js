@@ -8,7 +8,7 @@ export default function LandingPage() {
       <nav className={styles.navbar}>
         <div className={styles.logo}>
           <div className={styles.logoIcon}>D</div>
-          <span className={styles.logoText}>Dimenssion</span>
+          <span className={styles.logoText}>Dimension</span>
         </div>
         <div className={styles.navLinks}>
           <Link href="/login" className="btn btn-ghost">
@@ -32,7 +32,7 @@ export default function LandingPage() {
           <span className={styles.heroGradient}>clarity</span>
         </h1>
         <p className={styles.heroDescription}>
-          Dimenssion helps you break down projects into focused sprints, track
+          Dimension helps you break down projects into focused sprints, track
           tasks on a Kanban board, and maintain a complete activity trail — all
           in one clean, distraction-free interface.
         </p>
@@ -84,7 +84,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className={styles.footer}>
-        <p>© {new Date().getFullYear()} Dimenssion. Built for focused productivity.</p>
+        <p>© {new Date().getFullYear()} Dimension. Built for focused productivity.</p>
       </footer>
     </div>
   );

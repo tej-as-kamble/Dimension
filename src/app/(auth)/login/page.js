@@ -48,7 +48,7 @@ export default function LoginPage() {
         <div className={styles.authHeader}>
           <Link href="/" className={styles.authLogo}>
             <div className={styles.authLogoIcon}>D</div>
-            <span className={styles.authLogoText}>Dimenssion</span>
+            <span className={styles.authLogoText}>Dimension</span>
           </Link>
           <h1 className={styles.authTitle}>Welcome back</h1>
           <p className={styles.authSubtitle}>
