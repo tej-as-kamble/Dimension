@@ -1,0 +1,78 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* Sprint Status */
+.planning {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-planning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.active {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--color-active);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.closed {
+  background: rgba(107, 114, 128, 0.12);
+  color: var(--color-closed);
+  border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+/* Priority */
+.low {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-low);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-medium);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.high {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-error);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Stage */
+.todo {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--color-todo);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.inprogress {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-inprogress);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.done {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--color-done);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* Dot indicator */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}

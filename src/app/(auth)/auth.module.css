@@ -1,0 +1,145 @@
+.authContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  position: relative;
+  z-index: 1;
+}
+
+.authCard {
+  width: 100%;
+  max-width: 440px;
+  padding: var(--space-10);
+  animation: scaleIn 0.3s ease-out;
+}
+
+.authHeader {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.authLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  text-decoration: none;
+}
+
+.authLogoIcon {
+  width: 40px;
+  height: 40px;
+  background: var(--gradient-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.authLogoText {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.authTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.authSubtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* — Form — */
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* — Divider — */
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-2) 0;
+}
+
+.authDividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-default);
+}
+
+.authDividerText {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* — Google Button — */
+.googleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.googleBtn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.googleIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* — Footer — */
+.authFooter {
+  text-align: center;
+  margin-top: var(--space-6);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.authFooter a {
+  color: var(--accent-purple);
+  font-weight: 500;
+}
+
+.authFooter a:hover {
+  text-decoration: underline;
+}
+
+/* — Alert Overrides — */
+.authAlert {
+  margin-bottom: var(--space-2);
+}
+
+@media (max-width: 480px) {
+  .authCard {
+    padding: var(--space-6);
+  }
+}

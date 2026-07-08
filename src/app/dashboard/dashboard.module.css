@@ -1,0 +1,317 @@
+.dashboardLayout {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+.mainContent {
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  padding: var(--space-8);
+  transition: margin-left var(--transition-default);
+}
+
+/* — Page Header — */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.pageTitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: var(--font-heading);
+}
+
+.pageSubtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+/* — Sprint Grid — */
+.sprintGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-5);
+}
+
+/* — Empty State — */
+.emptyState {
+  text-align: center;
+  padding: var(--space-16) var(--space-6);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.emptyDescription {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-6);
+}
+
+/* — Sprint Detail — */
+.sprintHeader {
+  margin-bottom: var(--space-8);
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+}
+
+.sprintTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.sprintTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.sprintMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.sprintGoal {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--gradient-subtle);
+  border: 1px solid rgba(124, 58, 237, 0.1);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* — Kanban Board — */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  animation: fadeInUp 0.4s ease-out 0.1s both;
+}
+
+.kanbanColumn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanbanHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.kanbanTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.kanbanCount {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.kanbanBody {
+  padding: var(--space-3);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.kanbanEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* Column accent colors */
+.columnTodo .kanbanHeader { border-bottom-color: rgba(139, 92, 246, 0.3); }
+.columnInProgress .kanbanHeader { border-bottom-color: rgba(245, 158, 11, 0.3); }
+.columnDone .kanbanHeader { border-bottom-color: rgba(34, 197, 94, 0.3); }
+
+/* — Task Detail — */
+.taskDetail {
+  max-width: 800px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.taskHeader {
+  margin-bottom: var(--space-6);
+}
+
+.taskTitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.taskTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.taskMetaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.taskSection {
+  margin-bottom: var(--space-8);
+}
+
+.taskSectionTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.taskContent {
+  padding: var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+/* — Profile — */
+.profileSection {
+  max-width: 600px;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.profileCard {
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.profileInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.profileAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  overflow: hidden;
+}
+
+.profileAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileName {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.profileEmail {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.profileProvider {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.passwordForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    margin-left: 0;
+    padding: var(--space-5) var(--space-4);
+    padding-top: var(--space-16);
+  }
+
+  .kanban {
+    grid-template-columns: 1fr;
+  }
+
+  .sprintGrid {
+    grid-template-columns: 1fr;
+  }
+}
