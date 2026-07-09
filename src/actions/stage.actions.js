@@ -13,22 +13,31 @@ async function getAuthUserId() {
   return session.user.id;
 }
 
-export async function getStages() {
+/**
+ * Get stages for a user.
+ * If sprintId is provided, returns global stages + sprint-local stages merged and sorted.
+ * If not provided, returns only global stages.
+ */
+export async function getStages(sprintId = null) {
   try {
     const userId = await getAuthUserId();
     await dbConnect();
 
-    let stages = await Stage.find({ userId }).sort({ order: 1 }).lean();
+    const query = sprintId
+      ? { userId, $or: [{ sprintId: null }, { sprintId }] }
+      : { userId, sprintId: null };
+
+    let stages = await Stage.find(query).sort({ order: 1 }).lean();
 
     if (!stages || stages.length === 0) {
-      // Create defaults
+      // Create defaults (always global)
       const defaults = [
-        { userId, name: 'To Do', order: 0 },
-        { userId, name: 'In Progress', order: 1 },
-        { userId, name: 'Done', order: 2 },
+        { userId, sprintId: null, name: 'To Do', order: 0 },
+        { userId, sprintId: null, name: 'In Progress', order: 1 },
+        { userId, sprintId: null, name: 'Done', order: 2 },
       ];
       await Stage.insertMany(defaults);
-      stages = await Stage.find({ userId }).sort({ order: 1 }).lean();
+      stages = await Stage.find(query).sort({ order: 1 }).lean();
     }
 
     return {
@@ -41,16 +50,23 @@ export async function getStages() {
   }
 }
 
-export async function createStage(name) {
+/**
+ * Create a new stage.
+ * @param {string} name - Stage name
+ * @param {string|null} sprintId - If provided, stage is sprint-local; otherwise global.
+ */
+export async function createStage(name, sprintId = null) {
   try {
     const userId = await getAuthUserId();
     await dbConnect();
 
+    // Get the max order across all stages for this user (global + local) so ordering doesn't clash
     const maxStage = await Stage.findOne({ userId }).sort({ order: -1 }).lean();
     const newOrder = maxStage ? maxStage.order + 1 : 0;
 
     const stage = await Stage.create({
       userId,
+      sprintId: sprintId || null,
       name,
       order: newOrder,
     });
@@ -63,6 +79,9 @@ export async function createStage(name) {
   }
 }
 
+/**
+ * Update a stage name. Also renames matching tasks across the relevant scope.
+ */
 export async function updateStage(stageId, name) {
   try {
     const userId = await getAuthUserId();
@@ -87,6 +106,9 @@ export async function updateStage(stageId, name) {
   }
 }
 
+/**
+ * Delete a stage (ownership check).
+ */
 export async function deleteStage(stageId) {
   try {
     const userId = await getAuthUserId();
@@ -99,5 +121,28 @@ export async function deleteStage(stageId) {
   } catch (error) {
     console.error('Delete stage error:', error);
     return { error: 'Failed to delete stage' };
+  }
+}
+
+/**
+ * Reorder stages. Accepts an ordered array of { _id, order } objects.
+ * Persists the new order values in bulk.
+ */
+export async function reorderStages(orderedIds) {
+  try {
+    const userId = await getAuthUserId();
+    await dbConnect();
+
+    await Promise.all(
+      orderedIds.map(({ _id, order }) =>
+        Stage.findOneAndUpdate({ _id, userId }, { order })
+      )
+    );
+
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error) {
+    console.error('Reorder stages error:', error);
+    return { error: 'Failed to reorder stages' };
   }
 }

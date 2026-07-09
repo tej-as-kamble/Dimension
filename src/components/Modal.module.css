@@ -20,7 +20,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 540px;
+  max-width: 680px;
   max-height: 90vh;
   overflow-y: auto;
   animation: scaleIn 0.2s ease-out;

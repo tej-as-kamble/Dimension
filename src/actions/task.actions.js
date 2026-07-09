@@ -128,16 +128,22 @@ export async function getTasksBySprintId(sprintId) {
       sprintId: task.sprintId.toString(),
     }));
 
-    // Fetch user stages for dynamic grouping
-    let stages = await Stage.find({ userId }).sort({ order: 1 }).lean();
+    // Fetch user stages: global (sprintId: null) + sprint-local stages merged
+    let stages = await Stage.find({
+      userId,
+      $or: [{ sprintId: null }, { sprintId }],
+    }).sort({ order: 1 }).lean();
     if (!stages || stages.length === 0) {
       const defaults = [
-        { userId, name: 'To Do', order: 0 },
-        { userId, name: 'In Progress', order: 1 },
-        { userId, name: 'Done', order: 2 },
+        { userId, sprintId: null, name: 'To Do', order: 0 },
+        { userId, sprintId: null, name: 'In Progress', order: 1 },
+        { userId, sprintId: null, name: 'Done', order: 2 },
       ];
       await Stage.insertMany(defaults);
-      stages = await Stage.find({ userId }).sort({ order: 1 }).lean();
+      stages = await Stage.find({
+        userId,
+        $or: [{ sprintId: null }, { sprintId }],
+      }).sort({ order: 1 }).lean();
     }
 
     const grouped = {};

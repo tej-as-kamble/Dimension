@@ -57,8 +57,7 @@ export async function registerUser(formData) {
 
 /**
  * Update user password.
- * - If user has existing password: requires old password verification.
- * - If OAuth-only user: allows setting a new password directly.
+ * Users are already authenticated via session; no current password required.
  */
 export async function updatePassword(formData) {
   try {
@@ -67,7 +66,6 @@ export async function updatePassword(formData) {
       return { error: 'You must be logged in' };
     }
 
-    const currentPassword = formData.get('currentPassword');
     const newPassword = formData.get('newPassword');
     const confirmPassword = formData.get('confirmPassword');
 
@@ -88,18 +86,6 @@ export async function updatePassword(formData) {
     const user = await User.findById(session.user.id).select('+password');
     if (!user) {
       return { error: 'User not found' };
-    }
-
-    // If user has an existing password, verify the current one
-    if (user.password) {
-      if (!currentPassword) {
-        return { error: 'Current password is required' };
-      }
-
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) {
-        return { error: 'Current password is incorrect' };
-      }
     }
 
     // Set new password (will be hashed by pre-save hook)

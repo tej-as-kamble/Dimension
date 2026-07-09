@@ -9,6 +9,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -33,6 +35,8 @@ export default function ProfilePage() {
     if (result.success) {
       setMessage({ type: 'success', text: result.message });
       e.target.reset();
+      setNewPassword('');
+      setConfirmPassword('');
     } else {
       setMessage({ type: 'error', text: result.error });
     }
@@ -58,7 +62,9 @@ export default function ProfilePage() {
     );
   }
 
-  const isOAuthOnly = user?.authProvider === 'google' && !user?.hasPassword;
+  // Button disabled until both fields are non-empty
+  const isSubmitDisabled =
+    formLoading || !newPassword.trim() || !confirmPassword.trim();
 
   return (
     <div className={styles.profileSection}>
@@ -99,21 +105,20 @@ export default function ProfilePage() {
             marginBottom: 'var(--space-5)',
           }}
         >
-          {isOAuthOnly ? '🔑 Set a Password' : '🔑 Change Password'}
+          🔑 Set Password
         </h2>
 
-        {isOAuthOnly && (
-          <p
-            style={{
-              fontSize: '0.85rem',
-              color: 'var(--text-secondary)',
-              marginBottom: 'var(--space-5)',
-            }}
-          >
-            You signed up with Google. Set a password to also log in with your
-            email and password.
-          </p>
-        )}
+        <p
+          style={{
+            fontSize: '0.85rem',
+            color: 'var(--text-secondary)',
+            marginBottom: 'var(--space-5)',
+          }}
+        >
+          {user?.authProvider === 'google' && !user?.hasPassword
+            ? 'You signed up with Google. Set a password to also log in with your email and password.'
+            : 'Update your account password. You are already signed in, so no current password is required.'}
+        </p>
 
         {message.text && (
           <div
@@ -128,22 +133,6 @@ export default function ProfilePage() {
         )}
 
         <form onSubmit={handlePasswordSubmit} className={styles.passwordForm}>
-          {!isOAuthOnly && (
-            <div className="form-group">
-              <label htmlFor="currentPassword" className="form-label">
-                Current Password
-              </label>
-              <input
-                id="currentPassword"
-                name="currentPassword"
-                type="password"
-                className="form-input"
-                placeholder="Enter current password"
-                required={!isOAuthOnly}
-              />
-            </div>
-          )}
-
           <div className="form-group">
             <label htmlFor="newPassword" className="form-label">
               New Password
@@ -156,6 +145,8 @@ export default function ProfilePage() {
               placeholder="Min. 6 characters"
               required
               minLength={6}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
             />
           </div>
 
@@ -171,23 +162,24 @@ export default function ProfilePage() {
               placeholder="Re-enter new password"
               required
               minLength={6}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={formLoading}
+            disabled={isSubmitDisabled}
             style={{ alignSelf: 'flex-start' }}
+            title={isSubmitDisabled && !formLoading ? 'Fill in both fields to continue' : undefined}
           >
             {formLoading ? (
               <>
                 <span className="spinner"></span> Updating...
               </>
-            ) : isOAuthOnly ? (
-              'Set Password'
             ) : (
-              'Update Password'
+              'Set Password'
             )}
           </button>
         </form>

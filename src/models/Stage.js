@@ -8,6 +8,16 @@ const StageSchema = new mongoose.Schema(
       required: [true, 'Stage must belong to a user'],
       index: true,
     },
+    /**
+     * Optional: if set, this stage is local to the specified sprint.
+     * If null/absent, the stage is global (shared across all sprints).
+     */
+    sprintId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Sprint',
+      default: null,
+      index: true,
+    },
     name: {
       type: String,
       required: [true, 'Please provide a stage name'],
@@ -29,5 +39,6 @@ const StageSchema = new mongoose.Schema(
 );
 
 StageSchema.index({ userId: 1, order: 1 });
+StageSchema.index({ userId: 1, sprintId: 1 });
 
 export default mongoose.models.Stage || mongoose.model('Stage', StageSchema);

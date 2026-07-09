@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useFormCache from '@/hooks/useFormCache';
 import styles from './SprintForm.module.css';
 
 export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
   const [error, setError] = useState('');
-
+  const [isDirty, setIsDirty] = useState(false);
+  const [nameValue, setNameValue] = useState('');
   const isEdit = !!sprint;
 
   function formatDate(date) {
@@ -21,6 +22,14 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
   const defaultStartDate = cachedData?.startDate ?? formatDate(sprint?.startDate) ?? '';
   const defaultEndDate = cachedData?.endDate ?? formatDate(sprint?.endDate) ?? '';
   const defaultSprintGoal = cachedData?.sprintGoal ?? sprint?.sprintGoal ?? '';
+
+  // Initialise nameValue once cache is loaded (after hydration)
+  useEffect(() => {
+    if (isLoaded) {
+      setNameValue(defaultName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
 
   if (!isLoaded) return <div className="spinner" style={{ margin: '20px auto' }}></div>;
 
@@ -40,7 +49,23 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     saveCache(data);
+    setNameValue(data.name || '');
+
+    if (isEdit) {
+      const dirty =
+        (data.name?.trim() || '') !== (sprint.name || '') ||
+        (data.startDate || '') !== (formatDate(sprint.startDate) || '') ||
+        (data.endDate || '') !== (formatDate(sprint.endDate) || '') ||
+        (data.sprintGoal?.trim() || '') !== (sprint.sprintGoal || '');
+      setIsDirty(dirty);
+    } else {
+      setIsDirty(true);
+    }
   }
+
+  // Create mode: disabled until name is non-empty
+  // Edit mode: disabled until at least one field changed
+  const isSubmitDisabled = loading || (isEdit ? !isDirty : !nameValue.trim());
 
   return (
     <form onChange={handleChange} onSubmit={handleSubmit} className={styles.form}>
@@ -100,15 +125,18 @@ export default function SprintForm({ sprint, onSubmit, onCancel, loading }) {
         />
       </div>
 
-
-
       <div className={styles.actions}>
         {onCancel && (
           <button type="button" className="btn btn-secondary" onClick={onCancel}>
             Cancel
           </button>
         )}
-        <button type="submit" className="btn btn-primary" disabled={loading}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={isSubmitDisabled}
+          title={isSubmitDisabled && !loading ? (isEdit ? 'Make a change to enable save' : 'Enter a sprint name to continue') : undefined}
+        >
           {loading ? (
             <>
               <span className="spinner"></span> Saving...

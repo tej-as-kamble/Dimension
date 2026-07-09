@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useFormCache from '@/hooks/useFormCache';
 import styles from './TaskForm.module.css';
 
@@ -13,6 +13,8 @@ export default function TaskForm({
   loading,
 }) {
   const [error, setError] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const [titleValue, setTitleValue] = useState('');
   const isEdit = !!task;
 
   const formId = task ? `task_edit_${task._id}` : (sprintId ? `task_create_${sprintId}` : 'task_create');
@@ -22,6 +24,14 @@ export default function TaskForm({
   const defaultDescription = cachedData?.description ?? task?.description ?? '';
   const defaultPriority = cachedData?.priority ?? task?.priority ?? 'Medium';
   const defaultStage = cachedData?.stage ?? task?.stage ?? (stages[0]?.name || 'To Do');
+
+  // Initialise titleValue once cache is loaded (after hydration)
+  useEffect(() => {
+    if (isLoaded) {
+      setTitleValue(defaultTitle);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
 
   if (!isLoaded) return <div className="spinner" style={{ margin: '20px auto' }}></div>;
 
@@ -44,7 +54,24 @@ export default function TaskForm({
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
     saveCache(data);
+    setTitleValue(data.title || '');
+
+    if (isEdit) {
+      // Edit mode: dirty if any field differs from original
+      const dirty =
+        (data.title?.trim() || '') !== (task.title || '') ||
+        (data.description || '') !== (task.description || '') ||
+        (data.priority || '') !== (task.priority || '') ||
+        (data.stage || '') !== (task.stage || '');
+      setIsDirty(dirty);
+    } else {
+      setIsDirty(true); // Create mode: any change counts as dirty
+    }
   }
+
+  // Create mode: disabled until title is non-empty
+  // Edit mode: disabled until at least one field changed
+  const isSubmitDisabled = loading || (isEdit ? !isDirty : !titleValue.trim());
 
   return (
     <form onChange={handleChange} onSubmit={handleSubmit} className={styles.form}>
@@ -128,7 +155,12 @@ export default function TaskForm({
             Cancel
           </button>
         )}
-        <button type="submit" className="btn btn-primary" disabled={loading}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={isSubmitDisabled}
+          title={isSubmitDisabled && !loading ? (isEdit ? 'Make a change to enable save' : 'Enter a title to continue') : undefined}
+        >
           {loading ? (
             <>
               <span className="spinner"></span> Saving...
