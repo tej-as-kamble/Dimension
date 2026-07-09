@@ -19,6 +19,7 @@ import Modal from '@/components/Modal';
 import StatusBadge from '@/components/StatusBadge';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import ActivityLog from '@/components/ActivityLog';
+import CommentSection from '@/components/CommentSection';
 import styles from '../../dashboard.module.css';
 
 export default function SprintDetailPage({ params }) {
@@ -577,6 +578,7 @@ export default function SprintDetailPage({ params }) {
         isOpen={!!selectedTaskId}
         onClose={closeTaskModal}
         title={selectedTask?.title || 'Task'}
+        maxWidth="800px"
       >
         {taskDetailLoading ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -616,7 +618,19 @@ export default function SprintDetailPage({ params }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
                 <StatusBadge value={selectedTask.stage} />
                 <StatusBadge value={selectedTask.priority} showDot={false} />
-                <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+                {selectedTask.tags?.map(tag => (
+                  <span key={tag._id} style={{ 
+                    background: 'var(--bg-tertiary)', 
+                    color: 'var(--text-primary)', 
+                    padding: '2px 8px', 
+                    borderRadius: '12px', 
+                    fontSize: '0.75rem',
+                    border: '1px solid var(--border-subtle)' 
+                  }}>
+                    #{tag.name}
+                  </span>
+                ))}
+                <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', marginLeft: 'auto' }}>
                   Created{' '}
                   {new Date(selectedTask.createdAt).toLocaleDateString('en-US', {
                     month: 'short',
@@ -651,6 +665,9 @@ export default function SprintDetailPage({ params }) {
                   <MarkdownRenderer content={selectedTask.description} />
                 </div>
               </div>
+
+              {/* Comments Section */}
+              <CommentSection taskId={selectedTask._id} currentUserId={sprint.userId} />
 
               {/* Activity log */}
               <div>

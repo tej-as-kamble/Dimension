@@ -4,6 +4,7 @@ import dbConnect from '@/lib/dbConnect';
 import Task from '@/models/Task';
 import Sprint from '@/models/Sprint';
 import Stage from '@/models/Stage';
+import Tag from '@/models/Tag';
 import { auth } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
@@ -16,6 +17,25 @@ async function getAuthUserId() {
     throw new Error('Unauthorized');
   }
   return session.user.id;
+}
+
+/**
+ * Process tags: filter out isNew tags, create them in DB, and return array of ObjectIds.
+ */
+async function processTags(tags, sprintId, userId) {
+  const processedTags = [];
+  for (const tag of tags) {
+    if (tag.isNew) {
+      let existing = await Tag.findOne({ name: tag.name, userId, $or: [{sprintId: null}, {sprintId}] });
+      if (!existing) {
+        existing = await Tag.create({ name: tag.name, sprintId, userId });
+      }
+      processedTags.push(existing._id);
+    } else {
+      processedTags.push(tag._id || tag);
+    }
+  }
+  return processedTags;
 }
 
 /**
@@ -68,9 +88,19 @@ export async function createTask(formData) {
     const description = formData.get('description') || '';
     const priority = formData.get('priority') || 'Medium';
     const stage = formData.get('stage') || 'To Do';
+    let tags = [];
+    try {
+      const tagsStr = formData.get('tags');
+      if (tagsStr) tags = JSON.parse(tagsStr);
+    } catch (e) {
+      console.error('Failed to parse tags:', e);
+    }
 
     if (!sprintId || !title) {
       return { error: 'Sprint and title are required' };
+    }
+    if (!tags || tags.length === 0) {
+      return { error: 'At least one tag is required' };
     }
 
     await dbConnect();
@@ -81,6 +111,8 @@ export async function createTask(formData) {
       return { error: 'Sprint not found' };
     }
 
+    const processedTagIds = await processTags(tags, sprintId, userId);
+
     const task = await Task.create({
       userId,
       sprintId,
@@ -88,6 +120,7 @@ export async function createTask(formData) {
       description,
       priority,
       stage,
+      tags: processedTagIds,
       activityLog: [
         {
           actionDescription: 'Created task',
@@ -118,6 +151,7 @@ export async function getTasksBySprintId(sprintId) {
     await dbConnect();
 
     const tasks = await Task.find({ sprintId, userId })
+      .populate('tags')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -180,7 +214,7 @@ export async function getTaskById(taskId) {
 
     await dbConnect();
 
-    const task = await Task.findOne({ _id: taskId, userId }).lean();
+    const task = await Task.findOne({ _id: taskId, userId }).populate('tags').lean();
 
     if (!task) {
       return { error: 'Task not found' };
@@ -223,12 +257,24 @@ export async function updateTask(taskId, formData) {
     const description = formData.get('description');
     const priority = formData.get('priority');
     const stage = formData.get('stage');
+    let tags = undefined;
+    try {
+      const tagsStr = formData.get('tags');
+      if (tagsStr) tags = JSON.parse(tagsStr);
+    } catch (e) {
+      console.error('Failed to parse tags:', e);
+    }
 
     if (title) updates.title = title;
     if (description !== null && description !== undefined)
       updates.description = description;
     if (priority) updates.priority = priority;
     if (stage) updates.stage = stage;
+    if (tags && tags.length > 0) {
+      updates.tags = await processTags(tags, existingTask.sprintId, userId);
+    } else if (tags && tags.length === 0) {
+      return { error: 'At least one tag is required' };
+    }
 
     // Chronological Logging Engine: generate log entries for changes
     const logEntries = generateActivityLogEntries(existingTask, updates);
@@ -244,7 +290,7 @@ export async function updateTask(taskId, formData) {
       { _id: taskId, userId },
       logEntries.length > 0 ? pushQuery : { $set: updateQuery },
       { new: true, runValidators: true }
-    ).lean();
+    ).populate('tags').lean();
 
     revalidatePath(`/dashboard/sprints/${existingTask.sprintId}`);
     revalidatePath(

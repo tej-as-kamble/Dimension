@@ -62,6 +62,12 @@ const TaskSchema = new mongoose.Schema(
       type: String,
       default: 'To Do',
     },
+    tags: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tag',
+      },
+    ],
     activityLog: [ActivityLogSchema],
   },
   {

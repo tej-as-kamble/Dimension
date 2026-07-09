@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useFormCache from '@/hooks/useFormCache';
+import TagSelector from './TagSelector';
 import styles from './TaskForm.module.css';
 
 export default function TaskForm({
@@ -15,6 +16,7 @@ export default function TaskForm({
   const [error, setError] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [titleValue, setTitleValue] = useState('');
+  const [selectedTags, setSelectedTags] = useState(task?.tags || []);
   const isEdit = !!task;
 
   const formId = task ? `task_edit_${task._id}` : (sprintId ? `task_create_${sprintId}` : 'task_create');
@@ -56,22 +58,26 @@ export default function TaskForm({
     saveCache(data);
     setTitleValue(data.title || '');
 
+    // The tags change is tracked through selectedTags state, but we can also manually check dirty state.
     if (isEdit) {
-      // Edit mode: dirty if any field differs from original
+      const originalTags = (task.tags || []).map(t => t._id || t).sort().join(',');
+      const currentTags = selectedTags.map(t => t._id || t).sort().join(',');
+      
       const dirty =
         (data.title?.trim() || '') !== (task.title || '') ||
         (data.description || '') !== (task.description || '') ||
         (data.priority || '') !== (task.priority || '') ||
-        (data.stage || '') !== (task.stage || '');
+        (data.stage || '') !== (task.stage || '') ||
+        originalTags !== currentTags;
       setIsDirty(dirty);
     } else {
-      setIsDirty(true); // Create mode: any change counts as dirty
+      setIsDirty(true);
     }
   }
 
-  // Create mode: disabled until title is non-empty
-  // Edit mode: disabled until at least one field changed
-  const isSubmitDisabled = loading || (isEdit ? !isDirty : !titleValue.trim());
+  // Create mode: disabled until title is non-empty and at least 1 tag is selected
+  // Edit mode: disabled until at least one field changed and at least 1 tag is selected
+  const isSubmitDisabled = loading || (isEdit ? !isDirty : !titleValue.trim()) || selectedTags.length === 0;
 
   return (
     <form onChange={handleChange} onSubmit={handleSubmit} className={styles.form}>
@@ -107,6 +113,18 @@ export default function TaskForm({
           defaultValue={defaultDescription}
           maxLength={10000}
           style={{ minHeight: '140px' }}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Tags (Required)</label>
+        <TagSelector
+          sprintId={sprintId || task?.sprintId}
+          selectedTags={selectedTags}
+          onChange={(tags) => {
+            setSelectedTags(tags);
+            setIsDirty(true);
+          }}
         />
       </div>
 

@@ -1,0 +1,136 @@
+.container {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.addForm {
+  background: var(--bg-card);
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: 16px;
+}
+
+.textarea {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  max-height: 350px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.empty {
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.commentCard {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.commentCard:last-child {
+  border-bottom: none;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.authorMeta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.author {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.timestamp {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.content {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.actionBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.actionBtn:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.editForm {
+  margin-top: 4px;
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
