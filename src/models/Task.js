@@ -62,6 +62,10 @@ const TaskSchema = new mongoose.Schema(
       type: String,
       default: 'To Do',
     },
+    order: {
+      type: Number,
+      default: 0,
+    },
     tags: [
       {
         type: mongoose.Schema.Types.ObjectId,

@@ -152,7 +152,7 @@ export async function getTasksBySprintId(sprintId) {
 
     const tasks = await Task.find({ sprintId, userId })
       .populate('tags')
-      .sort({ createdAt: -1 })
+      .sort({ order: 1, createdAt: -1 })
       .lean();
 
     const serialized = tasks.map((task) => ({
@@ -304,6 +304,70 @@ export async function updateTask(taskId, formData) {
   } catch (error) {
     console.error('Update task error:', error);
     return { error: error.message || 'Failed to update task' };
+  }
+}
+
+/**
+ * Move a Task to a (possibly different) column at a specific index.
+ * Handles stage change + order update + activity logging + sibling reorder.
+ */
+export async function moveTask(taskId, targetStage, newIndex) {
+  try {
+    const userId = await getAuthUserId();
+    await dbConnect();
+
+    const task = await Task.findOne({ _id: taskId, userId });
+    if (!task) return { error: 'Task not found' };
+
+    const oldStage = task.stage;
+    const stageChanged = oldStage !== targetStage;
+
+    // Get all tasks in the target column (excluding the moved card if same column)
+    const filter = { sprintId: task.sprintId, userId, stage: targetStage };
+    if (!stageChanged) {
+      filter._id = { $ne: taskId };
+    }
+    const siblings = await Task.find(filter).sort({ order: 1, createdAt: -1 }).lean();
+
+    // Insert the task id at the desired index
+    const reordered = [...siblings];
+    const clampedIndex = Math.max(0, Math.min(newIndex, reordered.length));
+    reordered.splice(clampedIndex, 0, task);
+
+    // Batch-update order values for every card in the target column
+    const bulkOps = reordered.map((t, i) => ({
+      updateOne: {
+        filter: { _id: t._id },
+        update: { $set: { order: i, ...(t._id.equals(task._id) ? { stage: targetStage } : {}) } },
+      },
+    }));
+    await Task.bulkWrite(bulkOps);
+
+    // If cross-column: also re-index the source column to close the gap
+    if (stageChanged) {
+      const sourceSiblings = await Task.find({
+        sprintId: task.sprintId, userId, stage: oldStage,
+      }).sort({ order: 1, createdAt: -1 }).lean();
+
+      if (sourceSiblings.length > 0) {
+        const sourceOps = sourceSiblings.map((t, i) => ({
+          updateOne: { filter: { _id: t._id }, update: { $set: { order: i } } },
+        }));
+        await Task.bulkWrite(sourceOps);
+      }
+
+      // Activity log
+      await Task.updateOne(
+        { _id: taskId },
+        { $push: { activityLog: { actionDescription: `Moved from '${oldStage}' to '${targetStage}'`, timestamp: new Date() } } }
+      );
+    }
+
+    revalidatePath(`/dashboard/sprints/${task.sprintId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Move task error:', error);
+    return { error: error.message || 'Failed to move task' };
   }
 }
 

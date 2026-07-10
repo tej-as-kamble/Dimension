@@ -1,6 +1,6 @@
 .card {
   padding: var(--space-4);
-  cursor: pointer;
+  cursor: grab;
   border-radius: var(--radius-md);
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -12,12 +12,31 @@
   font-family: var(--font-body);
   outline: none;
   color: inherit;
+  user-select: none;
 }
 
 .card:hover {
   border-color: var(--border-hover);
   box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+/* While being dragged */
+.cardDragging {
+  opacity: 0.35;
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+/* Drop indicator — shows a bar above the card */
+.cardDropTarget {
+  border-top: 3px solid var(--accent-purple, #7c3aed);
+  margin-top: -2px;
+  transition: border-top 0.1s ease;
 }
 
 .cardHeader {
@@ -48,3 +67,4 @@
   color: var(--text-tertiary);
   font-family: monospace;
 }
+

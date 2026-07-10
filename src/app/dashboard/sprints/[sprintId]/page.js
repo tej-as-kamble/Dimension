@@ -10,6 +10,7 @@ import {
   getTaskById,
   updateTask,
   deleteTask,
+  moveTask,
 } from '@/actions/task.actions';
 import { reorderStages } from '@/actions/stage.actions';
 import TaskCard from '@/components/TaskCard';
@@ -60,9 +61,34 @@ export default function SprintDetailPage({ params }) {
   const [editingStage, setEditingStage] = useState(null);
   const [editStageName, setEditStageName] = useState('');
 
+  // ─── Collapsed columns state ───────────────────────────────────────────────
+  const [collapsedColumns, setCollapsedColumns] = useState({});
+
+  // ─── Kebab menu state ─────────────────────────────────────────────────────
+  const [openMenuStageId, setOpenMenuStageId] = useState(null);
+  const menuRef = useRef(null);
+
+  // ─── Toast state ──────────────────────────────────────────────────────────
+  const [toast, setToast] = useState(null); // { message, type }
+
+  // ─── Card drag-and-drop state ─────────────────────────────────────────────
+  const dragCardRef = useRef(null);          // { taskId, sourceStage }
+  const [cardDropTarget, setCardDropTarget] = useState(null); // { stageName, index }
+
   useEffect(() => {
     loadData();
   }, [sprintId]);
+
+  // Close kebab menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpenMenuStageId(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // When a task is selected, fetch it and update the URL bar without navigating
   useEffect(() => {
@@ -75,9 +101,19 @@ export default function SprintDetailPage({ params }) {
       if (result.success) setSelectedTask(result.task);
       setTaskDetailLoading(false);
     });
-    // Update URL for bookmarkability without triggering Next.js navigation
     window.history.pushState(null, '', `/dashboard/sprints/${sprintId}/tasks/${selectedTaskId}`);
   }, [selectedTaskId, sprintId]);
+
+  // Auto-dismiss toast after 3.5 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  function showToast(message, type = 'error') {
+    setToast({ message, type });
+  }
 
   async function loadData() {
     setLoading(true);
@@ -133,7 +169,6 @@ export default function SprintDetailPage({ params }) {
     setSelectedTaskId(null);
     setSelectedTask(null);
     setShowTaskEditModal(false);
-    // Restore sprint URL without navigating
     window.history.pushState(null, '', `/dashboard/sprints/${sprintId}`);
   }
 
@@ -194,7 +229,34 @@ export default function SprintDetailPage({ params }) {
     setEditingStage(null);
   }
 
-  // ─── Drag-and-drop column reorder ─────────────────────────────────────────
+  // ─── Delete Stage (with card validation) ──────────────────────────────────
+  async function handleDeleteStage(stage) {
+    setOpenMenuStageId(null);
+    const cardCount = grouped[stage.name]?.length || 0;
+    if (cardCount > 0) {
+      showToast(
+        `Cannot delete "${stage.name}" — it still has ${cardCount} card${cardCount > 1 ? 's' : ''}. Move or delete them first.`,
+        'error'
+      );
+      return;
+    }
+    if (!confirm(`Delete the "${stage.name}" column? This cannot be undone.`)) return;
+    const { deleteStage } = await import('@/actions/stage.actions');
+    const result = await deleteStage(stage._id);
+    if (result.success) {
+      loadData();
+    } else {
+      showToast(result.error || 'Failed to delete column.', 'error');
+    }
+  }
+
+  // ─── Expand / Collapse Column ─────────────────────────────────────────────
+  function toggleCollapse(stageId) {
+    setCollapsedColumns((prev) => ({ ...prev, [stageId]: !prev[stageId] }));
+    setOpenMenuStageId(null);
+  }
+
+  // ─── Drag-and-drop column reorder (handle only) ───────────────────────────
   function handleDragStart(e, stageId) {
     dragStageId.current = stageId;
     e.dataTransfer.effectAllowed = 'move';
@@ -221,11 +283,8 @@ export default function SprintDetailPage({ params }) {
     const [moved] = reordered.splice(sourceIdx, 1);
     reordered.splice(targetIdx, 0, moved);
 
-    // Assign new order values
     const withOrder = reordered.map((s, i) => ({ ...s, order: i }));
     setStages(withOrder);
-
-    // Persist
     reorderStages(withOrder.map((s) => ({ _id: s._id, order: s.order })));
     dragStageId.current = null;
   }
@@ -233,6 +292,93 @@ export default function SprintDetailPage({ params }) {
   function handleDragEnd() {
     setDraggingOver(null);
     dragStageId.current = null;
+  }
+
+  // ─── Card drag-and-drop handlers ──────────────────────────────────────────
+  function handleCardDragOverColumn(e, stageName) {
+    // Only react to card drags, not column drags
+    if (dragStageId.current) return;
+    if (!e.dataTransfer.types.includes('application/card-id')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    // Find which card index the cursor is nearest to
+    const columnBody = e.currentTarget;
+    const cards = Array.from(columnBody.querySelectorAll('[data-card-index]'));
+
+    if (cards.length === 0) {
+      setCardDropTarget({ stageName, index: 0 });
+      return;
+    }
+
+    const mouseY = e.clientY;
+    let targetIndex = cards.length; // default: append at end
+
+    for (let i = 0; i < cards.length; i++) {
+      const rect = cards[i].getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (mouseY < midY) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    setCardDropTarget({ stageName, index: targetIndex });
+  }
+
+  function handleCardDragLeaveColumn(e) {
+    // Only clear if actually leaving the column body (not entering a child)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setCardDropTarget(null);
+    }
+  }
+
+  async function handleCardDrop(e, targetStageName) {
+    // Ignore column-reorder drops
+    if (dragStageId.current) return;
+
+    const taskId = e.dataTransfer.getData('application/card-id');
+    const sourceStage = e.dataTransfer.getData('application/card-stage');
+    if (!taskId) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dropIndex = cardDropTarget?.stageName === targetStageName ? cardDropTarget.index : (grouped[targetStageName]?.length || 0);
+    setCardDropTarget(null);
+
+    // Skip if dropping in the exact same position
+    if (sourceStage === targetStageName) {
+      const currentCards = grouped[targetStageName] || [];
+      const currentIdx = currentCards.findIndex(t => t._id === taskId);
+      if (currentIdx === dropIndex || currentIdx === dropIndex - 1) return;
+    }
+
+    // ── Optimistic UI update ──
+    setGrouped(prev => {
+      const newGrouped = { ...prev };
+      // Remove from source
+      const sourceCards = [...(newGrouped[sourceStage] || [])];
+      const cardIndex = sourceCards.findIndex(t => t._id === taskId);
+      if (cardIndex === -1) return prev;
+      const [card] = sourceCards.splice(cardIndex, 1);
+      newGrouped[sourceStage] = sourceCards;
+
+      // Insert into target
+      const targetCards = sourceStage === targetStageName ? sourceCards : [...(newGrouped[targetStageName] || [])];
+      const insertAt = Math.min(dropIndex, targetCards.length);
+      targetCards.splice(insertAt, 0, { ...card, stage: targetStageName });
+      newGrouped[targetStageName] = targetCards;
+
+      return newGrouped;
+    });
+
+    // ── Persist to server ──
+    const result = await moveTask(taskId, targetStageName, dropIndex);
+    if (!result.success) {
+      showToast(result.error || 'Failed to move card', 'error');
+      loadData(); // revert to server state
+    }
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -266,15 +412,22 @@ export default function SprintDetailPage({ params }) {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <>
-      {/* Sprint Header */}
+    <div className={styles.sprintPageRoot}>
+      {/* ── Toast Notification ── */}
+      {toast && (
+        <div className={`${styles.toast} ${styles[`toast--${toast.type}`]}`}>
+          <span>{toast.message}</span>
+          <button className={styles.toastClose} onClick={() => setToast(null)}>✕</button>
+        </div>
+      )}
+
+      {/* ── Sprint Header ── */}
       <div className={styles.sprintHeader}>
         <Link href="/dashboard" className={styles.backLink}>
           ← Back to Sprints
         </Link>
 
         <div className={styles.sprintTitleRow}>
-          {/* Sprint title + switcher */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, flexWrap: 'wrap' }}>
             <h1 className={styles.sprintTitle}>{sprint.name}</h1>
             {allSprints.length > 1 && (
@@ -333,111 +486,207 @@ export default function SprintDetailPage({ params }) {
         )}
       </div>
 
-      {/* Add Task Button */}
-      <div className={styles.pageHeader} style={{ marginBottom: '16px' }}>
+      {/* ── Toolbar row (Add Task button) ── */}
+      <div className={styles.pageHeader} style={{ marginBottom: '12px' }}>
         <div></div>
         <button className="btn btn-primary" onClick={() => setShowTaskModal(true)}>
           + Add Task
         </button>
       </div>
 
-      {/* Kanban Board — horizontal scroll */}
+      {/* ── Kanban Board ── */}
       <div className={styles.kanban}>
-        {stages.map((stage) => (
-          <div
-            key={stage._id || stage.name}
-            className={`${styles.kanbanColumn} ${draggingOver === stage._id ? styles.kanbanColumnDragOver : ''}`}
-            draggable
-            onDragStart={(e) => handleDragStart(e, stage._id)}
-            onDragOver={(e) => handleDragOver(e, stage._id)}
-            onDrop={(e) => handleDrop(e, stage._id)}
-            onDragEnd={handleDragEnd}
-          >
-            <div className={styles.kanbanHeader} style={{ cursor: 'grab' }}>
-              <span className={styles.kanbanTitle}>
-                <span style={{ marginRight: '6px', opacity: 0.4, fontSize: '0.75rem' }}>⠿</span>
-                {editingStage?._id === stage._id ? (
-                  <input
-                    autoFocus
-                    value={editStageName}
-                    onChange={(e) => setEditStageName(e.target.value)}
-                    onBlur={handleEditStageSubmit}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleEditStageSubmit();
-                      if (e.key === 'Escape') setEditingStage(null);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-focus)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                      padding: '2px 6px',
-                      width: '120px',
-                      fontFamily: 'var(--font-body)',
-                      outline: 'none',
-                    }}
-                  />
-                ) : (
+        {stages.map((stage) => {
+          const isCollapsed = !!collapsedColumns[stage._id];
+          const cardCount = grouped[stage.name]?.length || 0;
+          const isMenuOpen = openMenuStageId === stage._id;
+
+          return (
+            <div
+              key={stage._id || stage.name}
+              className={`${styles.kanbanColumn} ${draggingOver === stage._id ? styles.kanbanColumnDragOver : ''} ${isCollapsed ? styles.kanbanColumnCollapsed : ''}`}
+              onDragOver={(e) => handleDragOver(e, stage._id)}
+              onDrop={(e) => handleDrop(e, stage._id)}
+              onDragEnd={handleDragEnd}
+            >
+              {/* ── Column Header ── */}
+              <div className={`${styles.kanbanHeader} ${isCollapsed ? styles.kanbanHeaderCollapsed : ''}`}>
+                {/* Drag handle — only this triggers drag */}
+                <span
+                  className={styles.dragHandle}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, stage._id)}
+                  title="Drag to reorder"
+                >
+                  ⠿
+                </span>
+
+                {isCollapsed ? (
+                  /* Vertical title when collapsed */
                   <span
-                    onDoubleClick={() => {
-                      setEditingStage(stage);
-                      setEditStageName(stage.name);
-                    }}
-                    title="Double-click to rename"
+                    className={styles.kanbanTitleVertical}
+                    onClick={() => toggleCollapse(stage._id)}
+                    title="Click to expand"
                   >
                     {stage.name}
                   </span>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingStage(stage);
-                    setEditStageName(stage.name);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    marginLeft: '4px',
-                    opacity: 0.4,
-                    fontSize: '0.75rem',
-                    padding: '0 2px',
-                  }}
-                  title="Rename column"
-                >
-                  ✎
-                </button>
-                {stage.sprintId && (
-                  <span
-                    title="Local to this sprint"
-                    style={{ fontSize: '0.65rem', opacity: 0.5, marginLeft: '4px', letterSpacing: '0' }}
-                  >
-                    (local)
+                ) : (
+                  /* Normal title row */
+                  <span className={styles.kanbanTitle}>
+                    {editingStage?._id === stage._id ? (
+                      <input
+                        autoFocus
+                        value={editStageName}
+                        onChange={(e) => setEditStageName(e.target.value)}
+                        onBlur={handleEditStageSubmit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleEditStageSubmit();
+                          if (e.key === 'Escape') setEditingStage(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          background: 'var(--bg-input)',
+                          border: '1px solid var(--border-focus)',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.85rem',
+                          padding: '2px 6px',
+                          width: '120px',
+                          fontFamily: 'var(--font-body)',
+                          outline: 'none',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onDoubleClick={() => {
+                          setEditingStage(stage);
+                          setEditStageName(stage.name);
+                        }}
+                        title="Double-click to rename"
+                      >
+                        {stage.name}
+                      </span>
+                    )}
+                    {stage.sprintId && (
+                      <span
+                        title="Local to this sprint"
+                        style={{ fontSize: '0.65rem', opacity: 0.5, letterSpacing: '0' }}
+                      >
+                        (local)
+                      </span>
+                    )}
                   </span>
                 )}
-              </span>
-              <span className={styles.kanbanCount}>
-                {grouped[stage.name]?.length || 0}
-              </span>
-            </div>
 
-            <div className={styles.kanbanBody}>
-              {grouped[stage.name]?.length > 0 ? (
-                grouped[stage.name].map((task) => (
-                  <TaskCard
-                    key={task._id}
-                    task={task}
-                    onSelect={setSelectedTaskId}
-                  />
-                ))
-              ) : (
-                <div className={styles.kanbanEmpty}>No tasks</div>
+                {/* Right side: count + kebab menu */}
+                {!isCollapsed && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+                    <span className={styles.kanbanCount}>{cardCount}</span>
+
+                    {/* Three-dot (kebab) menu */}
+                    <div className={styles.kebabWrapper} ref={isMenuOpen ? menuRef : null}>
+                      <button
+                        className={styles.kebabBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuStageId(isMenuOpen ? null : stage._id);
+                        }}
+                        title="Column options"
+                        aria-label="Column options"
+                      >
+                        ⋮
+                      </button>
+
+                      {isMenuOpen && (
+                        <div className={styles.kebabMenu}>
+                          {/* Edit */}
+                          <button
+                            className={styles.kebabItem}
+                            onClick={() => {
+                              setOpenMenuStageId(null);
+                              setEditingStage(stage);
+                              setEditStageName(stage.name);
+                            }}
+                          >
+                            <span className={styles.kebabItemIcon}>✎</span>
+                            Rename
+                          </button>
+
+                          {/* Collapse */}
+                          <button
+                            className={styles.kebabItem}
+                            onClick={() => toggleCollapse(stage._id)}
+                          >
+                            <span className={styles.kebabItemIcon}>⟨</span>
+                            Collapse
+                          </button>
+
+                          <div className={styles.kebabDivider} />
+
+                          {/* Delete */}
+                          <button
+                            className={`${styles.kebabItem} ${cardCount > 0 ? styles.kebabItemDisabled : styles.kebabItemDanger}`}
+                            onClick={() => handleDeleteStage(stage)}
+                            title={cardCount > 0 ? `Move all ${cardCount} card(s) before deleting` : 'Delete column'}
+                          >
+                            <span className={styles.kebabItemIcon}>🗑</span>
+                            Delete
+                            {cardCount > 0 && (
+                              <span className={styles.kebabItemBadge}>{cardCount}</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Collapsed: show expand icon */}
+                {isCollapsed && (
+                  <button
+                    className={styles.kebabBtn}
+                    onClick={() => toggleCollapse(stage._id)}
+                    title="Expand column"
+                    style={{ marginTop: 'auto' }}
+                  >
+                    ⟩
+                  </button>
+                )}
+              </div>
+
+              {/* ── Column Body (hidden when collapsed) ── */}
+              {!isCollapsed && (
+                <div
+                  className={styles.kanbanBody}
+                  onDragOver={(e) => handleCardDragOverColumn(e, stage.name)}
+                  onDragLeave={handleCardDragLeaveColumn}
+                  onDrop={(e) => handleCardDrop(e, stage.name)}
+                >
+                  {grouped[stage.name]?.length > 0 ? (
+                    grouped[stage.name].map((task, idx) => (
+                      <div key={task._id} data-card-index={idx}>
+                        {/* Drop indicator line above this card */}
+                        {cardDropTarget?.stageName === stage.name && cardDropTarget.index === idx && (
+                          <div className={styles.cardDropIndicator} />
+                        )}
+                        <TaskCard
+                          task={task}
+                          onSelect={setSelectedTaskId}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.kanbanEmpty}>No tasks</div>
+                  )}
+                  {/* Drop indicator at the very bottom */}
+                  {cardDropTarget?.stageName === stage.name && cardDropTarget.index >= (grouped[stage.name]?.length || 0) && (
+                    <div className={styles.cardDropIndicator} />
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Add Column button */}
         <div
@@ -462,7 +711,7 @@ export default function SprintDetailPage({ params }) {
         </div>
       </div>
 
-      {/* ── Create Task Modal ────────────────────────────────────────────────── */}
+      {/* ── Create Task Modal ── */}
       <Modal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
@@ -477,7 +726,7 @@ export default function SprintDetailPage({ params }) {
         />
       </Modal>
 
-      {/* ── Edit Sprint Modal ────────────────────────────────────────────────── */}
+      {/* ── Edit Sprint Modal ── */}
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -491,7 +740,7 @@ export default function SprintDetailPage({ params }) {
         />
       </Modal>
 
-      {/* ── Add Column Modal ─────────────────────────────────────────────────── */}
+      {/* ── Add Column Modal ── */}
       <Modal
         isOpen={showAddColumnModal}
         onClose={() => {
@@ -573,7 +822,7 @@ export default function SprintDetailPage({ params }) {
         </form>
       </Modal>
 
-      {/* ── Task Detail Modal ────────────────────────────────────────────────── */}
+      {/* ── Task Detail Modal ── */}
       <Modal
         isOpen={!!selectedTaskId}
         onClose={closeTaskModal}
@@ -586,7 +835,6 @@ export default function SprintDetailPage({ params }) {
           </div>
         ) : selectedTask ? (
           showTaskEditModal ? (
-            /* ── Inline edit form ── */
             <TaskForm
               task={selectedTask}
               sprintId={sprintId}
@@ -596,7 +844,6 @@ export default function SprintDetailPage({ params }) {
               loading={taskEditLoading}
             />
           ) : (
-            /* ── Task detail view ── */
             <div>
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -619,13 +866,13 @@ export default function SprintDetailPage({ params }) {
                 <StatusBadge value={selectedTask.stage} />
                 <StatusBadge value={selectedTask.priority} showDot={false} />
                 {selectedTask.tags?.map(tag => (
-                  <span key={tag._id} style={{ 
-                    background: 'var(--bg-tertiary)', 
-                    color: 'var(--text-primary)', 
-                    padding: '2px 8px', 
-                    borderRadius: '12px', 
+                  <span key={tag._id} style={{
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-primary)',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
                     fontSize: '0.75rem',
-                    border: '1px solid var(--border-subtle)' 
+                    border: '1px solid var(--border-subtle)'
                   }}>
                     #{tag.name}
                   </span>
@@ -698,6 +945,6 @@ export default function SprintDetailPage({ params }) {
           )
         ) : null}
       </Modal>
-    </>
+    </div>
   );
 }

@@ -11,6 +11,15 @@
   transition: margin-left var(--transition-default);
 }
 
+/* ── Sprint Page root — locks to 100vh, no page scroll ── */
+.sprintPageRoot {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 2 * var(--space-8, 32px));
+  overflow: hidden;
+  position: relative;
+}
+
 /* — Page Header — */
 .pageHeader {
   display: flex;
@@ -125,25 +134,39 @@
   flex-direction: row;
   gap: var(--space-5);
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: var(--space-5);
   animation: fadeInUp 0.4s ease-out 0.1s both;
-  /* Snap to columns on touch devices */
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
+  /* Fill the remaining vertical space */
+  flex: 1;
+  min-height: 0;
+  align-items: flex-start;
 }
 
+/* ── Normal (expanded) column ── */
 .kanbanColumn {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  min-height: 300px;
   display: flex;
   flex-direction: column;
   min-width: 280px;
   width: 280px;
   flex-shrink: 0;
   scroll-snap-align: start;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), width 0.25s ease, min-width 0.25s ease;
+  /* Column takes full available height */
+  height: 100%;
+  min-height: 0;
+}
+
+/* ── Collapsed column ── */
+.kanbanColumnCollapsed {
+  min-width: 48px !important;
+  width: 48px !important;
+  cursor: default;
 }
 
 .kanbanColumnDragOver {
@@ -151,22 +174,83 @@
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25);
 }
 
+/* ── Column Header ── */
 .kanbanHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Collapsed header — vertical layout */
+.kanbanHeaderCollapsed {
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3) var(--space-2);
+  border-bottom: none;
+  border-right: 1px solid var(--border-subtle);
+  height: 100%;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+/* Drag handle — the only draggable grip */
+.dragHandle {
+  cursor: grab;
+  opacity: 0.35;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  padding: 2px 3px;
+  border-radius: 3px;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.dragHandle:hover {
+  opacity: 0.75;
+  background: var(--bg-tertiary);
+}
+.dragHandle:active {
+  cursor: grabbing;
 }
 
 .kanbanTitle {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Vertical column title (collapsed state) */
+.kanbanTitleVertical {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.7;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 180px;
+  transition: opacity 0.15s;
+}
+.kanbanTitleVertical:hover {
+  opacity: 1;
 }
 
 .kanbanCount {
@@ -176,14 +260,31 @@
   background: var(--bg-tertiary);
   padding: 2px 8px;
   border-radius: var(--radius-full);
+  flex-shrink: 0;
 }
 
+/* ── Column body — scrollable ── */
 .kanbanBody {
   padding: var(--space-3);
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  overflow-y: auto;
+  min-height: 0;
+  /* Subtle scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+.kanbanBody::-webkit-scrollbar {
+  width: 4px;
+}
+.kanbanBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kanbanBody::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 2px;
 }
 
 .kanbanEmpty {
@@ -194,6 +295,171 @@
   color: var(--text-tertiary);
   font-size: 0.8rem;
   font-style: italic;
+  padding: var(--space-8) 0;
+}
+
+/* ── Card drop indicator line ── */
+.cardDropIndicator {
+  height: 3px;
+  background: var(--accent-purple, #7c3aed);
+  border-radius: 2px;
+  margin: -1px 0;
+  animation: dropIndicatorPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes dropIndicatorPulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+/* ── Kebab (three-dot) menu ── */
+.kebabWrapper {
+  position: relative;
+}
+
+.kebabBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kebabBtn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.kebabMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 200;
+  overflow: hidden;
+  animation: fadeInDown 0.15s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kebabItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background 0.12s;
+}
+.kebabItem:hover {
+  background: var(--bg-tertiary);
+}
+
+.kebabItemIcon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.kebabItemDanger {
+  color: var(--color-error, #f87171);
+}
+.kebabItemDanger:hover {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.kebabItemDisabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.kebabItemDisabled:hover {
+  background: none;
+}
+
+.kebabItemBadge {
+  margin-left: auto;
+  font-size: 0.72rem;
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: var(--text-tertiary);
+}
+
+.kebabDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+
+/* ── Toast Notification ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  max-width: 420px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  animation: slideInRight 0.25s ease-out;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.toast--error {
+  background: #2d1a1a;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+}
+
+.toast--success {
+  background: #1a2d1a;
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #86efac;
+}
+
+.toastClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 0.85rem;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: opacity 0.15s;
+}
+.toastClose:hover {
+  opacity: 1;
 }
 
 /* Column accent colors */
@@ -329,5 +595,12 @@
 
   .sprintGrid {
     grid-template-columns: 1fr;
+  }
+
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: 100%;
   }
 }
