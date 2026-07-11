@@ -64,7 +64,6 @@ export default function CommentSection({ taskId, currentUserId }) {
 
   return (
     <div className={styles.container}>
-      <h3 className={styles.title}>💬 Comments</h3>
       
       <div className={styles.list}>
         {loading ? (

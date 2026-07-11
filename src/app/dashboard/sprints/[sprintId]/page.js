@@ -21,6 +21,7 @@ import StatusBadge from '@/components/StatusBadge';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import ActivityLog from '@/components/ActivityLog';
 import CommentSection from '@/components/CommentSection';
+import TagSelector from '@/components/TagSelector';
 import styles from '../../dashboard.module.css';
 
 export default function SprintDetailPage({ params }) {
@@ -44,8 +45,15 @@ export default function SprintDetailPage({ params }) {
   const [selectedTaskId, setSelectedTaskId] = useState(taskId || null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [taskDetailLoading, setTaskDetailLoading] = useState(false);
-  const [showTaskEditModal, setShowTaskEditModal] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [editDescValue, setEditDescValue] = useState('');
   const [taskEditLoading, setTaskEditLoading] = useState(false);
+  const [sidebarUpdates, setSidebarUpdates] = useState({});
+  const [isDescOpen, setIsDescOpen] = useState(true);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(true);
+  const [isActivityOpen, setIsActivityOpen] = useState(false);
 
   // ─── Add Column modal state ────────────────────────────────────────────────
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
@@ -144,16 +152,33 @@ export default function SprintDetailPage({ params }) {
     return result;
   }
 
-  async function handleUpdateSelectedTask(formData) {
+  async function handleInlineUpdate(updates) {
+    if (!selectedTaskId) return;
     setTaskEditLoading(true);
+    
+    const formData = new FormData();
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'tags') {
+          formData.set(key, JSON.stringify(value));
+        } else {
+          formData.set(key, value);
+        }
+      } else if (value === null) {
+        // If we want to unset a field like deadline
+        formData.set(key, '');
+      }
+    });
+
     const result = await updateTask(selectedTaskId, formData);
     setTaskEditLoading(false);
+    
     if (result.success) {
-      setShowTaskEditModal(false);
       setSelectedTask(result.task);
       loadData();
+    } else {
+      showToast(result.error || 'Failed to update task', 'error');
     }
-    return result;
   }
 
   async function handleDeleteSelectedTask() {
@@ -165,10 +190,26 @@ export default function SprintDetailPage({ params }) {
     }
   }
 
+  function handleSidebarSave() {
+    if (Object.keys(sidebarUpdates).length > 0) {
+      handleInlineUpdate(sidebarUpdates);
+      setSidebarUpdates({});
+    }
+  }
+
+  function handleSidebarChange(key, value) {
+    setSidebarUpdates(prev => ({ ...prev, [key]: value }));
+  }
+
   function closeTaskModal() {
     setSelectedTaskId(null);
     setSelectedTask(null);
-    setShowTaskEditModal(false);
+    setIsEditingTitle(false);
+    setIsEditingDesc(false);
+    setSidebarUpdates({});
+    setIsDescOpen(true);
+    setIsCommentsOpen(true);
+    setIsActivityOpen(false);
     window.history.pushState(null, '', `/dashboard/sprints/${sprintId}`);
   }
 
@@ -409,6 +450,22 @@ export default function SprintDetailPage({ params }) {
       </div>
     );
   }
+
+  // ─── Computed state ────────────────────────────────────────────────────────
+  const hasSidebarChanges = selectedTask ? Object.keys(sidebarUpdates).some(key => {
+    if (key === 'tags') {
+      return JSON.stringify(sidebarUpdates[key]) !== JSON.stringify(selectedTask.tags || []);
+    }
+    if (key === 'deadline') {
+      const curr = sidebarUpdates.deadline;
+      const orig = selectedTask.deadline ? new Date(new Date(selectedTask.deadline).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+      return curr !== orig;
+    }
+    if (key === 'taskType') {
+      return sidebarUpdates[key] !== (selectedTask.taskType || 'Story');
+    }
+    return sidebarUpdates[key] !== selectedTask[key];
+  }) : false;
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -826,123 +883,280 @@ export default function SprintDetailPage({ params }) {
       <Modal
         isOpen={!!selectedTaskId}
         onClose={closeTaskModal}
-        title={selectedTask?.title || 'Task'}
-        maxWidth="800px"
+        title={
+          selectedTask ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                {sprint?.name || 'Sprint'}
+              </span>
+              <span style={{ opacity: 0.5 }}>/</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                {selectedTask.taskType === 'Bug' ? '🐛' : selectedTask.taskType === 'Feature' ? '🚀' : '📝'}
+                {selectedTask.taskType || 'Task'}
+              </span>
+            </div>
+          ) : null
+        }
+        maxWidth="1400px"
+        noScroll={true}
       >
         {taskDetailLoading ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div className="spinner" style={{ margin: '0 auto' }}></div>
           </div>
         ) : selectedTask ? (
-          showTaskEditModal ? (
-            <TaskForm
-              task={selectedTask}
-              sprintId={sprintId}
-              stages={stages}
-              onSubmit={handleUpdateSelectedTask}
-              onCancel={() => setShowTaskEditModal(false)}
-              loading={taskEditLoading}
-            />
-          ) : (
-            <div>
-              {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setShowTaskEditModal(true)}
+          <div className={styles.taskDetailGrid}>
+            
+            {/* ── Sidebar Column ── */}
+            <div className={styles.taskDetailSidebar}>
+              <div className={styles.sidebarField}>
+                <span className={styles.sidebarLabel}>Stage</span>
+                <select
+                  className="form-select"
+                  value={sidebarUpdates.stage !== undefined ? sidebarUpdates.stage : selectedTask.stage}
+                  onChange={(e) => handleSidebarChange('stage', e.target.value)}
+                  disabled={taskEditLoading}
                 >
-                  ✎ Edit
-                </button>
+                  {stages.map((stg) => (
+                    <option key={stg._id || stg.name} value={stg.name}>
+                      {stg.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.sidebarField}>
+                <span className={styles.sidebarLabel}>Priority</span>
+                <select
+                  className="form-select"
+                  value={sidebarUpdates.priority !== undefined ? sidebarUpdates.priority : selectedTask.priority}
+                  onChange={(e) => handleSidebarChange('priority', e.target.value)}
+                  disabled={taskEditLoading}
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+
+              <div className={styles.sidebarField}>
+                <span className={styles.sidebarLabel}>Task Type</span>
+                <select
+                  className="form-select"
+                  value={sidebarUpdates.taskType !== undefined ? sidebarUpdates.taskType : (selectedTask.taskType || 'Story')}
+                  onChange={(e) => handleSidebarChange('taskType', e.target.value)}
+                  disabled={taskEditLoading}
+                >
+                  <option value="Story">Story</option>
+                  <option value="Feature">Feature</option>
+                  <option value="Bug">Bug</option>
+                </select>
+              </div>
+
+              <div className={styles.sidebarField}>
+                <span className={styles.sidebarLabel}>Deadline</span>
+                <input
+                  type="datetime-local"
+                  className="form-input"
+                  value={sidebarUpdates.deadline !== undefined ? sidebarUpdates.deadline : (selectedTask.deadline ? new Date(new Date(selectedTask.deadline).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '')}
+                  onChange={(e) => handleSidebarChange('deadline', e.target.value)}
+                  disabled={taskEditLoading}
+                />
+              </div>
+
+              <div className={styles.sidebarField}>
+                <span className={styles.sidebarLabel}>Tags</span>
+                <TagSelector
+                  sprintId={sprintId}
+                  selectedTags={sidebarUpdates.tags !== undefined ? sidebarUpdates.tags : (selectedTask.tags || [])}
+                  onChange={(tags) => handleSidebarChange('tags', tags)}
+                />
+              </div>
+
+              {hasSidebarChanges && (
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleSidebarSave} disabled={taskEditLoading}>
+                    {taskEditLoading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setSidebarUpdates({})} disabled={taskEditLoading}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
                 <button
-                  className="btn btn-danger btn-sm"
+                  className={styles.subtleDeleteBtn}
                   onClick={handleDeleteSelectedTask}
                 >
-                  🗑 Delete
+                  Delete Task
                 </button>
               </div>
+            </div>
 
-              {/* Meta */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                <StatusBadge value={selectedTask.stage} />
-                <StatusBadge value={selectedTask.priority} showDot={false} />
-                {selectedTask.tags?.map(tag => (
-                  <span key={tag._id} style={{
-                    background: 'var(--bg-tertiary)',
-                    color: 'var(--text-primary)',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '0.75rem',
-                    border: '1px solid var(--border-subtle)'
-                  }}>
-                    #{tag.name}
-                  </span>
-                ))}
-                <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', marginLeft: 'auto' }}>
-                  Created{' '}
-                  {new Date(selectedTask.createdAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
+            {/* ── Main Column ── */}
+            <div className={styles.taskDetailMain}>
+              {/* Title Inline Edit */}
+              <div>
+                {isEditingTitle ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      autoFocus
+                      className={`${styles.inlineInput} ${styles.inlineTitle}`}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                      value={editTitleValue}
+                      onChange={(e) => setEditTitleValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setIsEditingTitle(false);
+                          if (editTitleValue.trim() && editTitleValue !== selectedTask.title) {
+                            handleInlineUpdate({ title: editTitleValue.trim() });
+                          }
+                        }
+                        if (e.key === 'Escape') {
+                          setIsEditingTitle(false);
+                          setEditTitleValue(selectedTask.title);
+                        }
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-primary btn-sm" onClick={() => {
+                        setIsEditingTitle(false);
+                        if (editTitleValue.trim() && editTitleValue !== selectedTask.title) {
+                          handleInlineUpdate({ title: editTitleValue.trim() });
+                        }
+                      }}>
+                        Save
+                      </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => {
+                        setIsEditingTitle(false);
+                        setEditTitleValue(selectedTask.title);
+                      }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <h2 
+                    className={styles.inlineTitle} 
+                    style={{ cursor: 'text', border: '1px solid transparent', padding: '4px 8px', margin: '-4px -8px', borderRadius: 'var(--radius-sm)' }} 
+                    onClick={() => {
+                      setEditTitleValue(selectedTask.title);
+                      setIsEditingTitle(true);
+                    }}
+                    title="Click to edit title"
+                  >
+                    {selectedTask.title}
+                  </h2>
+                )}
               </div>
 
-              {/* Description */}
-              <div style={{ marginBottom: '24px' }}>
-                <h3
-                  style={{
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: 'var(--text-secondary)',
-                    marginBottom: '12px',
-                  }}
+              {/* Description Inline Edit */}
+              <div>
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setIsDescOpen(!isDescOpen)}
                 >
-                  📝 Description
-                </h3>
-                <div
-                  style={{
-                    padding: '16px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-lg)',
-                  }}
-                >
-                  <MarkdownRenderer content={selectedTask.description} />
+                  <span className={`${styles.chevron} ${isDescOpen ? styles.chevronOpen : ''}`}>▶</span>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'inherit', margin: 0 }}>
+                    📝 Description
+                  </h3>
+                  {/* Edit button removed in favor of click-to-edit behavior */}
                 </div>
+                {isDescOpen && (
+                  <div style={{ marginTop: '8px' }}>
+                    {isEditingDesc ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <textarea
+                          className="form-textarea"
+                          value={editDescValue}
+                          onChange={(e) => setEditDescValue(e.target.value)}
+                          style={{ minHeight: '140px' }}
+                          autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="btn btn-primary btn-sm" onClick={() => {
+                            setIsEditingDesc(false);
+                            if (editDescValue !== selectedTask.description) {
+                              handleInlineUpdate({ description: editDescValue });
+                            }
+                          }}>
+                            Save
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => {
+                            setIsEditingDesc(false);
+                            setEditDescValue(selectedTask.description || '');
+                          }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          padding: '16px',
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-lg)',
+                          minHeight: '80px',
+                          cursor: 'text'
+                        }}
+                        onClick={() => {
+                          setEditDescValue(selectedTask.description || '');
+                          setIsEditingDesc(true);
+                        }}
+                        title="Click to edit description"
+                      >
+                        {selectedTask.description ? (
+                          <MarkdownRenderer content={selectedTask.description} />
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)' }}>Add a description...</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Comments Section */}
-              <CommentSection taskId={selectedTask._id} currentUserId={sprint.userId} />
+              <div>
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setIsCommentsOpen(!isCommentsOpen)}
+                >
+                  <span className={`${styles.chevron} ${isCommentsOpen ? styles.chevronOpen : ''}`}>▶</span>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'inherit', margin: 0 }}>
+                    💬 Comments
+                  </h3>
+                </div>
+                {isCommentsOpen && (
+                  <div style={{ marginTop: '8px' }}>
+                    <CommentSection taskId={selectedTask._id} currentUserId={sprint.userId} />
+                  </div>
+                )}
+              </div>
 
               {/* Activity log */}
               <div>
-                <h3
-                  style={{
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: 'var(--text-secondary)',
-                    marginBottom: '12px',
-                  }}
+                <div 
+                  className={styles.sectionHeader}
+                  onClick={() => setIsActivityOpen(!isActivityOpen)}
                 >
-                  📊 Activity Log
-                </h3>
-                <div
-                  style={{
-                    padding: '16px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-lg)',
-                  }}
-                >
-                  <ActivityLog entries={selectedTask.activityLog} />
+                  <span className={`${styles.chevron} ${isActivityOpen ? styles.chevronOpen : ''}`}>▶</span>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'inherit', margin: 0 }}>
+                    📊 Activity Log
+                  </h3>
                 </div>
+                {isActivityOpen && (
+                  <div style={{ marginTop: '8px', padding: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+                    <ActivityLog entries={selectedTask.activityLog} />
+                  </div>
+                )}
               </div>
             </div>
-          )
+
+          </div>
         ) : null}
       </Modal>
     </div>

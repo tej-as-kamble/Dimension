@@ -34,6 +34,12 @@ export default function TaskCard({ task, onSelect, isDraggedOver }) {
         <span className={styles.cardTitle}>{task.title}</span>
       </div>
       <div className={styles.cardMeta}>
+        <span className={styles.taskType}>{task.taskType}</span>
+        {task.deadline && (
+          <span className={styles.deadline} title="Deadline">
+            📅 {new Date(task.deadline).toLocaleDateString()} {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
         <StatusBadge value={task.priority} showDot={false} />
       </div>
     </button>

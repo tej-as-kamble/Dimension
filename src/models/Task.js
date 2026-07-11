@@ -50,6 +50,17 @@ const TaskSchema = new mongoose.Schema(
       default: '',
       maxlength: [10000, 'Description cannot exceed 10000 characters'],
     },
+    taskType: {
+      type: String,
+      enum: {
+        values: ['Story', 'Feature', 'Bug'],
+        message: '{VALUE} is not a valid task type',
+      },
+      required: [true, 'Please provide a task type'],
+    },
+    deadline: {
+      type: Date,
+    },
     priority: {
       type: String,
       enum: {

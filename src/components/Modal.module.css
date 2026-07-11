@@ -22,12 +22,15 @@
   width: 100%;
   max-width: 680px;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: scaleIn 0.2s ease-out;
   box-shadow: var(--shadow-lg);
 }
 
 .header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -62,4 +65,13 @@
 
 .body {
   padding: var(--space-6);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.noScroll {
+  overflow-y: hidden !important;
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
 }
