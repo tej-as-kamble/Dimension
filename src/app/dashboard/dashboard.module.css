@@ -604,3 +604,139 @@
     max-width: 100%;
   }
 }
+
+/* ── Task Details Modal Two-Column Layout ── */
+.taskDetailGrid {
+  display: grid;
+  grid-template-columns: calc(280px + var(--space-6)) 1fr;
+  gap: var(--space-6);
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .taskDetailGrid {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--space-6);
+  }
+}
+
+.taskDetailMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  overflow-y: auto;
+  height: 100%;
+  padding: var(--space-6) var(--space-6) var(--space-6) 0;
+}
+
+.taskDetailSidebar {
+  margin: var(--space-6) 0 var(--space-6) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--bg-card);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  overflow-y: auto;
+}
+
+.taskDetailSidebar::-webkit-scrollbar,
+.taskDetailMain::-webkit-scrollbar,
+.taskDetailGrid::-webkit-scrollbar {
+  width: 6px;
+}
+.taskDetailSidebar::-webkit-scrollbar-track,
+.taskDetailMain::-webkit-scrollbar-track,
+.taskDetailGrid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.taskDetailSidebar::-webkit-scrollbar-thumb,
+.taskDetailMain::-webkit-scrollbar-thumb,
+.taskDetailGrid::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: 4px;
+}
+
+.inlineInput {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.inlineInput:hover {
+  background: var(--bg-input);
+  border-color: var(--border-subtle);
+}
+
+.inlineInput:focus {
+  background: var(--bg-input);
+  border-color: var(--accent-purple);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+.inlineTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  margin-bottom: var(--space-2);
+}
+
+.sidebarLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.sidebarField {
+  display: flex;
+  flex-direction: column;
+}
+
+.subtleDeleteBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s;
+  text-align: left;
+}
+.subtleDeleteBtn:hover {
+  color: var(--danger-color, #ef4444);
+  text-decoration: underline;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+  color: var(--text-secondary);
+}
+.sectionHeader:hover {
+  color: var(--text-primary);
+}
+.chevron {
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+}
+.chevronOpen {
+  transform: rotate(90deg);
+}

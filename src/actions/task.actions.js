@@ -26,7 +26,7 @@ async function processTags(tags, sprintId, userId) {
   const processedTags = [];
   for (const tag of tags) {
     if (tag.isNew) {
-      let existing = await Tag.findOne({ name: tag.name, userId, $or: [{sprintId: null}, {sprintId}] });
+      let existing = await Tag.findOne({ name: tag.name, userId, $or: [{ sprintId: null }, { sprintId }] });
       if (!existing) {
         existing = await Tag.create({ name: tag.name, sprintId, userId });
       }
@@ -88,6 +88,8 @@ export async function createTask(formData) {
     const description = formData.get('description') || '';
     const priority = formData.get('priority') || 'Medium';
     const stage = formData.get('stage') || 'To Do';
+    const taskType = formData.get('taskType');
+    const deadline = formData.get('deadline');
     let tags = [];
     try {
       const tagsStr = formData.get('tags');
@@ -98,9 +100,6 @@ export async function createTask(formData) {
 
     if (!sprintId || !title) {
       return { error: 'Sprint and title are required' };
-    }
-    if (!tags || tags.length === 0) {
-      return { error: 'At least one tag is required' };
     }
 
     await dbConnect();
@@ -120,6 +119,8 @@ export async function createTask(formData) {
       description,
       priority,
       stage,
+      taskType,
+      deadline: deadline || null,
       tags: processedTagIds,
       activityLog: [
         {
@@ -257,6 +258,8 @@ export async function updateTask(taskId, formData) {
     const description = formData.get('description');
     const priority = formData.get('priority');
     const stage = formData.get('stage');
+    const taskType = formData.get('taskType');
+    const deadline = formData.get('deadline');
     let tags = undefined;
     try {
       const tagsStr = formData.get('tags');
@@ -270,10 +273,11 @@ export async function updateTask(taskId, formData) {
       updates.description = description;
     if (priority) updates.priority = priority;
     if (stage) updates.stage = stage;
-    if (tags && tags.length > 0) {
+    if (taskType) updates.taskType = taskType;
+    if (deadline !== undefined) updates.deadline = deadline || null;
+
+    if (tags !== undefined) {
       updates.tags = await processTags(tags, existingTask.sprintId, userId);
-    } else if (tags && tags.length === 0) {
-      return { error: 'At least one tag is required' };
     }
 
     // Chronological Logging Engine: generate log entries for changes

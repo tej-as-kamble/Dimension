@@ -22,10 +22,18 @@ export default function TaskForm({
   const formId = task ? `task_edit_${task._id}` : (sprintId ? `task_create_${sprintId}` : 'task_create');
   const { cachedData, isLoaded, saveCache, clearCache } = useFormCache(formId);
 
+  const formatLocal = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+
   const defaultTitle = cachedData?.title ?? task?.title ?? '';
   const defaultDescription = cachedData?.description ?? task?.description ?? '';
   const defaultPriority = cachedData?.priority ?? task?.priority ?? 'Medium';
   const defaultStage = cachedData?.stage ?? task?.stage ?? (stages[0]?.name || 'To Do');
+  const defaultTaskType = cachedData?.taskType ?? task?.taskType ?? 'Story';
+  const defaultDeadline = cachedData?.deadline ?? formatLocal(task?.deadline);
 
   // Initialise titleValue once cache is loaded (after hydration)
   useEffect(() => {
@@ -68,6 +76,8 @@ export default function TaskForm({
         (data.description || '') !== (task.description || '') ||
         (data.priority || '') !== (task.priority || '') ||
         (data.stage || '') !== (task.stage || '') ||
+        (data.taskType || '') !== (task.taskType || '') ||
+        (data.deadline || '') !== formatLocal(task.deadline) ||
         originalTags !== currentTags;
       setIsDirty(dirty);
     } else {
@@ -75,9 +85,9 @@ export default function TaskForm({
     }
   }
 
-  // Create mode: disabled until title is non-empty and at least 1 tag is selected
-  // Edit mode: disabled until at least one field changed and at least 1 tag is selected
-  const isSubmitDisabled = loading || (isEdit ? !isDirty : !titleValue.trim()) || selectedTags.length === 0;
+  // Create mode: disabled until title is non-empty
+  // Edit mode: disabled until at least one field changed
+  const isSubmitDisabled = loading || (isEdit ? !isDirty : !titleValue.trim());
 
   return (
     <form onChange={handleChange} onSubmit={handleSubmit} className={styles.form}>
@@ -117,7 +127,7 @@ export default function TaskForm({
       </div>
 
       <div className="form-group">
-        <label className="form-label">Tags (Required)</label>
+        <label className="form-label">Tags</label>
         <TagSelector
           sprintId={sprintId || task?.sprintId}
           selectedTags={selectedTags}
@@ -126,6 +136,33 @@ export default function TaskForm({
             setIsDirty(true);
           }}
         />
+      </div>
+
+      <div className={styles.row}>
+        <div className="form-group">
+          <label htmlFor="task-type" className="form-label">Task Type *</label>
+          <select
+            id="task-type"
+            name="taskType"
+            className="form-select"
+            defaultValue={defaultTaskType}
+            required
+          >
+            <option value="Story">Story</option>
+            <option value="Feature">Feature</option>
+            <option value="Bug">Bug</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label htmlFor="task-deadline" className="form-label">Deadline</label>
+          <input
+            id="task-deadline"
+            name="deadline"
+            type="datetime-local"
+            className="form-input"
+            defaultValue={defaultDeadline}
+          />
+        </div>
       </div>
 
       <div className={styles.row}>
